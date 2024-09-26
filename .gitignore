@@ -141,7 +141,6 @@ logs/
 tensorboard_logs/
 
 # Large data files (datasets, trained models, etc.)
-data/
 video_meta/
 models/
 *.npz
