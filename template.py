@@ -1,40 +1,27 @@
 from pathlib import Path
 import logging
-import json
 
 # Configure logging for better visibility of actions
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s]: %(message)s')
 
-# List of files and folders required for the Bedrock Knowledge Base and Multimodal chatbot project
+# List of files and folders required for the Ayurveda Chatbot project
 list_of_files = [
     "src/chatbot/__init__.py",                # Initialization file for the source package
-    "src/chatbot/data_loader.py",             # File for data loading (e.g., loading documents, media files)
-    "src/chatbot/bedrock_knowledge_base.py",  # File for setting up and managing Bedrock Knowledge Base
-    "src/chatbot/embedding_service.py",       # File for handling embedding models (e.g., using Titan or Claude embeddings)
-    "src/chatbot/multimodal_retrieval.py",    # File for implementing multimodal retrieval logic
-    "src/chatbot/chatbot_interface.py",       # File for handling chatbot interface and queries
+    "src/chatbot/data_loader.py",             # File for data loading (e.g., loading PDF documents)
+    "src/chatbot/pinecone_service.py",        # File for handling Pinecone vector store
+    "src/chatbot/chatbot.py",                  # Main chatbot logic and interactions
     "src/chatbot/utils.py",                   # File for utility functions (e.g., logging, config parsing)
     "src/__init__.py",                        # Initialization file for the source package
     "src/config.json",                        # Configuration file for the chatbot
     ".env",                                   # Environment file for storing sensitive data like API keys
     "setup.py",                               # Setup file for packaging the project
     "pyproject.toml",                         # Configuration file for Python project dependencies and settings
-    "Dockerfile",                             # Dockerfile for containerizing the application
-    ".gitignore",                             # File to ignore unnecessary files in Git
-    ".dockerignore",                          # File to ignore unnecessary files in Docker builds
-    "notebooks/experiments.ipynb",            # Jupyter notebook for experiments with the chatbot and retrieval system
+    "notebooks/chatbot_interaction.ipynb",    # Jupyter notebook for experimenting with the chatbot
     "data/.gitkeep",                          # Keeps the data folder in Git (for data files)
-    "tests/test_data_loader.py",              # Test case for data loader functionality
-    "tests/test_bedrock_kb.py",               # Test case for Bedrock Knowledge Base integration
-    "tests/test_embedding_service.py",        # Test case for embedding service
-    "tests/test_multimodal_retrieval.py",     # Test case for multimodal retrieval logic
-    "tests/test_chatbot_interface.py",        # Test case for chatbot interface functionality
-    "tests/test_utils.py",                    # Test case for utility functions
-    "app.py",                                 # Entry point for the chatbot application
-    "static/.gitkeep",                        # Keeps the static folder in Git (for CSS, JS)
-    "templates/index.html",                   # HTML template for the web interface
+    "tests/test_chatbot.py",                  # Test case for chatbot functionality
     "README.md",                              # README file for project documentation
-    ".github/workflows/cicd-main.yml"         # GitHub Actions workflow for CI/CD automation
+    ".gitignore",                             # File to ignore unnecessary files in Git
+    "LICENSE"                                 # MIT License file
 ]
 
 # Loop over the list of files and create the necessary directories and files
@@ -54,3 +41,35 @@ for filepath in list_of_files:
         logging.info(f"Created empty file: {filepath}")
     else:
         logging.info(f"File {filepath} already exists and is not empty")
+
+# Step to create the MIT License file
+mit_license = """MIT License
+
+Copyright (c) [2024] [Mohit Kumar]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+...
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
+# Write the MIT License to the LICENSE file
+license_filepath = Path("LICENSE")
+if not license_filepath.exists() or license_filepath.stat().st_size == 0:
+    with open(license_filepath, "w") as license_file:
+        license_file.write(mit_license.replace("[year]", "2024").replace("[your name]", "Angela"))
+    logging.info(f"Created MIT License file: {license_filepath}")
+else:
+    logging.info(f"File {license_filepath} already exists and is not empty")
