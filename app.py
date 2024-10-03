@@ -1,130 +1,133 @@
-# Step 1: Import Libraries
+import json
 import os
+import sys
 import boto3
-import pinecone
+import streamlit as st
+
+## We will be suing Titan Embeddings Model To generate Embedding
+
+from langchain_community.embeddings import BedrockEmbeddings
 from langchain.llms.bedrock import Bedrock
-from langchain.embeddings import BedrockEmbeddings
-from langchain.document_loaders import PyPDFDirectoryLoader
+
+## Data Ingestion
+
+import numpy as np
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+
+# Vector Embedding And Vector Store
+
+from langchain.vectorstores import FAISS
+
+## LLm Models
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
-from dotenv import load_dotenv
 
-# Step 2: Load Environment Variables
-load_dotenv()
+## Bedrock Clients
+bedrock=boto3.client(service_name="bedrock-runtime")
+bedrock_embeddings=BedrockEmbeddings(model_id="amazon.titan-embed-text-v2:0",client=bedrock)
 
-aws_access_key_id = os.getenv("aws_access_key_id")
-aws_secret_access_key = os.getenv("aws_secret_access_key")
-region_name = os.getenv("region_name")
-pinecone_api_key = os.getenv("PINECONE_API_KEY")  # Add your Pinecone API key
-pinecone_environment = os.getenv("PINECONE_ENVIRONMENT")  # Add your Pinecone environment
 
-# Step 3: Initialize Pinecone
-pinecone.init(api_key=pinecone_api_key, environment=pinecone_environment)
+## Data ingestion
+def data_ingestion():
+    loader=PyPDFDirectoryLoader("data")
+    documents=loader.load()
 
-# Step 4: Define Prompt Template
+    # - in our testing Character split works better with this PDF data set
+    text_splitter=RecursiveCharacterTextSplitter(chunk_size=10000,
+                                                 chunk_overlap=1000)
+    
+    docs=text_splitter.split_documents(documents)
+    return docs
+
+## Vector Embedding and vector store
+
+def get_vector_store(docs):
+    vectorstore_faiss=FAISS.from_documents(
+        docs,
+        bedrock_embeddings
+    )
+    vectorstore_faiss.save_local("faiss_index")
+
+def get_claude_llm():
+    ##create the Anthropic Model
+    llm=Bedrock(model_id="ai21.j2-mid-v1",client=bedrock,
+                model_kwargs={'maxTokens':512})
+    
+    return llm
+
+def get_llama2_llm():
+    ##create the Anthropic Model
+    llm=Bedrock(model_id="meta.llama3-8b-instruct-v1:0",client=bedrock,
+                model_kwargs={'max_gen_len':512})
+    
+    return llm
+
 prompt_template = """
+
 Human: Use the following pieces of context to provide a 
-concise answer to the question at the end but use at least summarize with 
-250 words with detailed explanations. If you don't know the answer, 
+concise answer to the question at the end but usse atleast summarize with 
+250 words with detailed explaantions. If you don't know the answer, 
 just say that you don't know, don't try to make up an answer.
 <context>
 {context}
-</context>
+</context
 
 Question: {question}
 
 Assistant:"""
 
-# Step 5: Initialize Bedrock Client
-bedrock = boto3.client(
-    service_name="bedrock-runtime", 
-    region_name=region_name,
-    aws_access_key_id=aws_access_key_id,
-    aws_secret_access_key=aws_secret_access_key,
-)
-
-# Step 6: Get Embeddings Model
-bedrock_embedding = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1", client=bedrock)
-
-# Step 7: Function to Load Documents
-def get_documents():
-    loader = PyPDFDirectoryLoader("Data")  # Load all PDFs from the 'Data' directory
-    documents = loader.load()
-    text_spliter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, 
-        chunk_overlap=500
-    )
-    docs = text_spliter.split_documents(documents)
-    return docs
-
-# Step 8: Function to Create and Save Vector Store
-def get_vector_store(docs):
-    # Create a new Pinecone index if it doesn't exist
-    index_name = "ayurveda-chatbot"
-    
-    # Create the index (if it doesn't exist)
-    if index_name not in pinecone.list_indexes():
-        pinecone.create_index(index_name, dimension=bedrock_embedding.output_dim)
-    
-    index = pinecone.Index(index_name)
-    
-    # Upsert documents into Pinecone
-    vectors = [(f"doc-{i}", bedrock_embedding.embed(doc), {"text": doc}) for i, doc in enumerate(docs)]
-    index.upsert(vectors)
-    
-    print("Vector store created and documents upserted.")
-
-# Step 9: Function to Get Language Model
-def get_llm():
-    llm = Bedrock(model_id="mistral.mistral-7b-instruct-v0:2", client=bedrock)
-    return llm
-
-# Step 10: Create Prompt Template Instance
 PROMPT = PromptTemplate(
-    template=prompt_template, 
-    input_variables=["context", "question"]
+    template=prompt_template, input_variables=["context", "question"]
 )
 
-# Step 11: Function to Get LLM Response
-def get_llm_response(llm, query):
-    index = pinecone.Index("ayurveda-chatbot")
-
-    # Query Pinecone for the most similar documents
-    query_vector = bedrock_embedding.embed(query)
-    results = index.query(query_vector, top_k=3, include_metadata=True)
-
-    # Prepare the context for the prompt
-    context = "\n".join([item['metadata']['text'] for item in results['matches']])
-    
-    # Generate response using the language model
+def get_response_llm(llm,vectorstore_faiss,query):
     qa = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=None,  # Pinecone already handles the retrieval
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": PROMPT}
-    )
+    llm=llm,
+    chain_type="stuff",
+    retriever=vectorstore_faiss.as_retriever(
+        search_type="similarity", search_kwargs={"k": 3}
+    ),
+    return_source_documents=True,
+    chain_type_kwargs={"prompt": PROMPT}
+)
+    answer=qa({"query":query})
+    return answer['result']
 
-    response = qa({"context": context, "question": query})
-    return response['result']
 
-# Step 12: Main Function to Run Chatbot
 def main():
-    print("Ayurveda Chatbot")
-    print("Type 'exit' to quit the chat.")
+    st.set_page_config("Chat PDF")
     
-    while True:
-        user_question = input("Ask a question about Ayurveda: ")
-        
-        if user_question.lower() == 'exit':
-            break
-        
-        llm = get_llm()
-        
-        response = get_llm_response(llm, user_question)
-        print("\nAssistant:", response)
+    st.header("Chat with PDF using AWS Bedrock💁")
 
-# Step 13: Run the Main Function
+    user_question = st.text_input("Ask a Question from the PDF Files")
+
+    with st.sidebar:
+        st.title("Update Or Create Vector Store:")
+        
+        if st.button("Vectors Update"):
+            with st.spinner("Processing..."):
+                docs = data_ingestion()
+                get_vector_store(docs)
+                st.success("Done")
+
+    if st.button("Claude Output"):
+        with st.spinner("Processing..."):
+            faiss_index = FAISS.load_local("faiss_index", bedrock_embeddings)
+            llm=get_claude_llm()
+            
+            #faiss_index = get_vector_store(docs)
+            st.write(get_response_llm(llm,faiss_index,user_question))
+            st.success("Done")
+
+    if st.button("Llama2 Output"):
+        with st.spinner("Processing..."):
+            faiss_index = FAISS.load_local("faiss_index", bedrock_embeddings)
+            llm=get_llama2_llm()
+            
+            #faiss_index = get_vector_store(docs)
+            st.write(get_response_llm(llm,faiss_index,user_question))
+            st.success("Done")
+
 if __name__ == "__main__":
     main()
