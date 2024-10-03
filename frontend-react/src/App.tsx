@@ -1,14 +1,26 @@
 import { useState } from 'react';
 
+interface Question {
+  question: string;
+  answer: string;
+}
+
 export default function App() {
-  const [questions, setQuestions] = useState([]);
-  const [newQuestion, setNewQuestion] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [newQuestion, setNewQuestion] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAsk = async () => {
     setLoading(true);
     setError(null);
+
+    // Input validation
+    if (!newQuestion.trim()) {
+      setError('Please enter a question.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('/ask', {
@@ -27,7 +39,7 @@ export default function App() {
       setQuestions([...questions, { question: newQuestion, answer: data.answer }]);
       setNewQuestion('');
     } catch (error) {
-      setError(error.message);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
@@ -39,7 +51,7 @@ export default function App() {
     setError(null);
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleAsk();
     }
@@ -99,7 +111,12 @@ export default function App() {
       <footer className="bg-purple-500 p-4 text-white shadow-md text-center">
         <p>&copy; 2024 Ayurveda-Knowledge-Bot</p>
         <p>
-          <a href="https://github.com/your-github-repo" target="_blank" rel="noopener noreferrer" className="text-white hover:text-gray-200">
+          <a 
+            href="https://github.com/your-github-repo" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-white hover:text-gray-200"
+          >
             View on GitHub
           </a>
         </p>
