@@ -1,7 +1,0 @@
-{
-    "embedding_model_id": "amazon.titan-embed-text-v2:0",
-    "llm_model_id": "meta.llama3-8b-instruct-v1:0",
-    "pdf_directory": "data",
-    "faiss_index_path": "faiss_index"
-  }
-  

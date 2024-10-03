@@ -53,7 +53,8 @@ cover/
 *.mo
 *.pot
 
-# Django/Flask/Other frameworks stuff
+# Framework-specific files
+## Django/Flask/Other frameworks
 *.log
 local_settings.py
 db.sqlite3
@@ -61,7 +62,7 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
-# Scrapy stuff:
+## Scrapy
 .scrapy
 
 # Sphinx documentation
@@ -78,27 +79,28 @@ target/
 profile_default/
 ipython_config.py
 
-# pyenv
+# Python environment management
+## pyenv
 .python-version
 
-# pipenv
+## pipenv
 Pipfile.lock
 
-# pdm
+## pdm
 pdm.lock
 .pdm.toml
 
-# PEP 582
+## PEP 582
 __pypackages__/
 
-# Celery stuff
+# Celery
 celerybeat-schedule
 celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Virtual environments
 .env
 .venv
 env/
@@ -106,33 +108,40 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.DS_Store
 
-# Spyder project settings
+# IDE and editor settings
+## Spyder
 .spyderproject
 .spyproject
 
-# Rope project settings
+## Rope
 .ropeproject
 
-# mkdocs documentation
+## VS Code
+.vscode/
+*.swp
+*.swo
+
+# Documentation
+## mkdocs
 /site
 
-# mypy
+# Type checkers and static analysis
+## mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# Pyre type checker
+## Pyre
 .pyre/
 
-# pytype static type analyzer
+## pytype
 .pytype/
 
-# Cython debug symbols
+# Debugging and profiling
 cython_debug/
 
-# TensorFlow/Keras checkpoint files and logs
+# TensorFlow/Keras files
 checkpoints/
 *.ckpt
 *.h5
@@ -140,7 +149,7 @@ checkpoints/
 logs/
 tensorboard_logs/
 
-# Large data files (datasets, trained models, etc.)
+# Large data files
 video_meta/
 models/
 *.npz
@@ -156,10 +165,53 @@ models/
 *.mov
 *.mkv
 
-# VS Code settings (optional)
-.vscode/
+# Node modules
+node_modules/
 
-# Temporary backup files and swap files
-*.bak
-*.swp
-*.tmp
+# Build output
+build/
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variable files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependency directories
+.pnp/
+.pnp.js
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Coverage directory used by tools like Istanbul
+coverage/
+
+# Test output
+test-results/
+__tests__/
+*.coverage
+*.lcov
+
+# Miscellaneous files
+*.pem
+*.gz
+*.zip
+*.tar
+*.tgz
+
+# React Native
+.expo/
+*.expo/
+
+# Fiases index files
+fiases-index/
+*.fiases
