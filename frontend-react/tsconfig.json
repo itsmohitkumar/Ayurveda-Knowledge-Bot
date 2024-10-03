@@ -1,29 +1,26 @@
 {
   "compilerOptions": {
-    "target": "es5", // Target ECMAScript version
+    "target": "es5",
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext" // Libraries to include in the compilation
+      "esnext"
     ],
-    "allowJs": true, // Allow JavaScript files to be compiled
-    "skipLibCheck": true, // Skip type checking of declaration files
-    "esModuleInterop": true, // Enable compatibility between CommonJS and ES Modules
-    "allowSyntheticDefaultImports": true, // Allow default imports from non-default exported modules
-    "strict": true, // Enable all strict type-checking options
-    "noImplicitAny": true, // Raise an error on expressions and declarations with an implied 'any' type
-    "strictNullChecks": true, // Ensure 'null' and 'undefined' are checked
-    "strictFunctionTypes": true, // Ensure function type parameters are checked contravariantly
-    "forceConsistentCasingInFileNames": true, // Ensure consistent casing in file names
-    "noFallthroughCasesInSwitch": true, // Prevent fallthrough cases in switch statements
-    "module": "esnext", // Specify module system
-    "moduleResolution": "node", // Module resolution strategy
-    "resolveJsonModule": true, // Allow importing JSON files as modules
-    "isolatedModules": true, // Ensure each file can be transpiled independently
-    "noEmit": true, // Do not emit output files; useful during development
-    "jsx": "react-jsx" // Specify how JSX should be processed
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
   "include": [
-    "src" // Specify directories to include
+    "src"
   ]
 }

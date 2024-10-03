@@ -15,13 +15,6 @@ export default function App() {
     setLoading(true);
     setError(null);
 
-    // Input validation
-    if (!newQuestion.trim()) {
-      setError('Please enter a question.');
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await fetch('/ask', {
         method: 'POST',
@@ -39,7 +32,7 @@ export default function App() {
       setQuestions([...questions, { question: newQuestion, answer: data.answer }]);
       setNewQuestion('');
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An unexpected error occurred.');
+      setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -111,12 +104,7 @@ export default function App() {
       <footer className="bg-purple-500 p-4 text-white shadow-md text-center">
         <p>&copy; 2024 Ayurveda-Knowledge-Bot</p>
         <p>
-          <a 
-            href="https://github.com/your-github-repo" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-white hover:text-gray-200"
-          >
+          <a href="https://github.com/your-github-repo" target="_blank" rel="noopener noreferrer" className="text-white hover:text-gray-200">
             View on GitHub
           </a>
         </p>
