@@ -1,8 +1,9 @@
 boto3
 awscli
 pypdf
-streamlit
 faiss-cpu
 langchain_community
-numpy
 langchain
+fastapi
+uvicorn
+langchain_aws

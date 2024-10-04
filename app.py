@@ -1,7 +1,6 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import boto3
-import streamlit as st
-
-# Import necessary modules from LangChain
 from langchain_aws import BedrockEmbeddings, BedrockLLM
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFDirectoryLoader
@@ -11,12 +10,14 @@ from langchain.chains import RetrievalQA
 
 # Configuration variables
 DATA_DIRECTORY = "data"
-FAISS_INDEX_PATH = "faiss_index"
+FAISS_INDEX_PATH = "fiases-index"
 TITAN_MODEL_ID = "amazon.titan-embed-text-v1"
-CLAUDE_MODEL_ID = "ai21.j2-mid-v1"
-LLAMA_MODEL_ID = "meta.llama3-70b-instruct-v1:0"
+LLAMA_MODEL_ID = "meta.llama3-70b-instruct-v1:0"  # Default model
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 100
+
+# Initialize the FastAPI app
+app = FastAPI()
 
 # Initialize the Bedrock client
 bedrock = boto3.client(service_name="bedrock-runtime")
@@ -38,6 +39,10 @@ Assistant:
 """
 
 PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+
+# Pydantic model for the question input
+class QuestionRequest(BaseModel):
+    question: str
 
 def load_and_chunk_documents():
     """
@@ -64,17 +69,14 @@ def create_and_save_vector_store(chunked_documents):
     vectorstore_faiss = FAISS.from_documents(chunked_documents, bedrock_embeddings)
     vectorstore_faiss.save_local(FAISS_INDEX_PATH)
 
-def initialize_llm(model_id):
+def initialize_llm():
     """
-    Create and return a Bedrock LLM instance based on the specified model ID.
+    Create and return a Bedrock LLM instance using LLAMA_MODEL_ID.
     
-    Args:
-        model_id (str): The model identifier for the LLM.
-        
     Returns:
         LLM instance.
     """
-    llm = BedrockLLM(model_id=model_id, client=bedrock)
+    llm = BedrockLLM(model_id=LLAMA_MODEL_ID, client=bedrock)
     return llm
 
 def generate_response(llm, vectorstore_faiss, query):
@@ -96,42 +98,39 @@ def generate_response(llm, vectorstore_faiss, query):
         return_source_documents=True,
         chain_type_kwargs={"prompt": PROMPT}
     )
-    answer = qa.invoke({"query": query})  # Use the new invoke method
+    answer = qa.invoke({"query": query})
     return answer['result']
 
-def main():
+@app.on_event("startup")
+def on_startup():
     """
-    Main function to run the Streamlit application for querying PDF documents.
+    FastAPI startup event to load the FAISS index at the start of the application.
     """
-    st.set_page_config("Chat PDF")
-    st.header("Chat with PDF using AWS Bedrock 💁")
+    chunked_documents = load_and_chunk_documents()
+    create_and_save_vector_store(chunked_documents)
 
-    user_question = st.text_input("Ask a Question from the PDF Files")
+@app.post("/ask")
+async def ask_question(request: QuestionRequest):
+    """
+    FastAPI endpoint to handle question asking.
 
-    with st.sidebar:
-        st.title("Update or Create Vector Store:")
+    Args:
+        request (QuestionRequest): The user's question in the request body.
+
+    Returns:
+        A JSON response with the generated answer.
+    """
+    try:
+        # Load FAISS index
+        faiss_index = FAISS.load_local(FAISS_INDEX_PATH, bedrock_embeddings, allow_dangerous_deserialization=True)
         
-        if st.button("Vectors Update"):
-            with st.spinner("Processing..."):
-                chunked_documents = load_and_chunk_documents()
-                create_and_save_vector_store(chunked_documents)
-                st.success("Vector store updated successfully!")
+        # Initialize the LLM (using LLAMA_MODEL_ID)
+        llm = initialize_llm()
+        
+        # Generate response
+        response = generate_response(llm, faiss_index, request.question)
+        
+        return {"answer": response}
 
-    if st.button("Claude Output"):
-        with st.spinner("Processing..."):
-            faiss_index = FAISS.load_local(FAISS_INDEX_PATH, bedrock_embeddings, allow_dangerous_deserialization=True)
-            llm = initialize_llm(CLAUDE_MODEL_ID)
-            response = generate_response(llm, faiss_index, user_question)
-            st.write(response)
-            st.success("Claude response generated!")
-
-    if st.button("Llama2 Output"):
-        with st.spinner("Processing..."):
-            faiss_index = FAISS.load_local(FAISS_INDEX_PATH, bedrock_embeddings, allow_dangerous_deserialization=True)
-            llm = initialize_llm(LLAMA_MODEL_ID)
-            response = generate_response(llm, faiss_index, user_question)
-            st.write(response)
-            st.success("Llama2 response generated!")
-
-if __name__ == "__main__":
-    main()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")

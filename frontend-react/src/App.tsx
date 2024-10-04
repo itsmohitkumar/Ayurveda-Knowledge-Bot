@@ -4,7 +4,7 @@ import { useState } from 'react';
 const API_URL = 'http://localhost:8000/ask'; // FastAPI endpoint
 const HEADER_TITLE = 'Ayurveda-Knowledge-Bot';
 const FOOTER_TEXT = '© 2024 Ayurveda-Knowledge-Bot';
-const GITHUB_URL = 'https://github.com/your-github-repo';
+const GITHUB_URL = 'https://github.com/itsmohitkumar/Ayurveda-Knowledge-Bot';
 const INPUT_PLACEHOLDER = 'Type your question here';
 const ASK_BUTTON_TEXT = 'Ask';
 const CLEAR_BUTTON_TEXT = 'Clear';
