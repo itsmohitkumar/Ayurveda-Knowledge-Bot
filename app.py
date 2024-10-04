@@ -3,7 +3,7 @@ import json
 import time
 import boto3
 import logging
-from typing import List
+from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,14 +16,6 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION")
 
 # Load configuration from config.json
 with open("src/config.json") as config_file:
@@ -45,10 +37,10 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this to your specific needs, like ["http://localhost:3000"]
+    allow_origins=["*"],  # Adjust this to your specific needs
     allow_credentials=True,
-    allow_methods=["*"],  # This allows all HTTP methods
-    allow_headers=["*"],  # This allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Initialize logging
@@ -78,14 +70,21 @@ PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "q
 # Pydantic model for the question input
 class QuestionRequest(BaseModel):
     question: str
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_default_region: Optional[str] = None
 
     class Config:
         schema_extra = {
             "example": {
-                "question": "What is the capital of France?"
+                "question": "What is the capital of France?",
+                "aws_access_key_id": "your_access_key_id",
+                "aws_secret_access_key": "your_secret_access_key",
+                "aws_default_region": "your_region"
             }
         }
 
+# PDF Document Processor
 class PDFDocumentProcessor:
     def __init__(self, data_directory: str):
         self.data_directory = data_directory
@@ -112,6 +111,7 @@ class PDFDocumentProcessor:
             logger.error(f"Error loading and chunking documents: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error processing documents")
 
+# FAISS Manager
 class FAISSManager:
     def __init__(self, index_path: str, embeddings):
         self.index_path = index_path
@@ -137,6 +137,7 @@ class FAISSManager:
             logger.error(f"Error loading FAISS vector store: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error loading FAISS vector store")
 
+# LLM Service
 class LLMService:
     def __init__(self, model_id: str, client):
         self.model_id = model_id
@@ -168,15 +169,6 @@ class LLMService:
             logger.error(f"Error generating LLM response: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error generating response")
 
-# Dependency injection function for the Bedrock client
-def get_bedrock_client():
-    try:
-        logger.info("Initializing Bedrock client...")
-        return boto3.client(service_name="bedrock-runtime")
-    except Exception as e:
-        logger.error(f"Error initializing Bedrock client: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
 # Middleware to log requests and responses
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -197,28 +189,27 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         },
     )
 
-# Startup event to load FAISS index and process documents
-@app.on_event("startup")
-def on_startup():
-    try:
-        logger.info("Starting up application...")
-        bedrock_client = get_bedrock_client()
-        document_processor = PDFDocumentProcessor(DATA_DIRECTORY)
-        chunked_documents = document_processor.load_and_chunk_documents()
-
-        faiss_manager = FAISSManager(FAISS_INDEX_PATH, BedrockEmbeddings(model_id=TITAN_MODEL_ID, client=bedrock_client))
-        faiss_manager.create_and_save_vector_store(chunked_documents)
-
-        logger.info("Startup process completed successfully.")
-    except Exception as e:
-        logger.error(f"Error during startup: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Startup process failed")
-
+# Endpoint to ask a question
 @app.post("/ask")
-async def ask_question(request: QuestionRequest, bedrock_client = Depends(get_bedrock_client)):
+async def ask_question(request: QuestionRequest):
     try:
         start_time = time.time()
         logger.info(f"Received question: '{request.question}'")
+
+        # Initialize AWS client with keys from the request if provided
+        aws_access_key_id = request.aws_access_key_id or os.getenv("AWS_ACCESS_KEY_ID")
+        aws_secret_access_key = request.aws_secret_access_key or os.getenv("AWS_SECRET_ACCESS_KEY")
+        aws_default_region = request.aws_default_region or os.getenv("AWS_DEFAULT_REGION")
+
+        if not aws_access_key_id or not aws_secret_access_key or not aws_default_region:
+            raise HTTPException(status_code=400, detail="AWS keys are required.")
+
+        bedrock_client = boto3.client(
+            service_name="bedrock-runtime",
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=aws_default_region,
+        )
 
         # Load FAISS index
         faiss_manager = FAISSManager(FAISS_INDEX_PATH, BedrockEmbeddings(model_id=TITAN_MODEL_ID, client=bedrock_client))
