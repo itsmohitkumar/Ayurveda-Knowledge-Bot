@@ -8,3 +8,4 @@ fastapi
 uvicorn
 langchain_aws
 python-dotenv
+pytest

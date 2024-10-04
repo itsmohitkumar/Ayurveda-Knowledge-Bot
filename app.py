@@ -79,11 +79,11 @@ PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "q
 
 # Pydantic model for the question input
 class QuestionRequest(BaseModel):
-    question: str = Field(..., example="What is the capital of France?")
-    aws_access_key_id: Optional[str] = Field(None, example="your_access_key_id")
-    aws_secret_access_key: Optional[str] = Field(None, example="your_secret_access_key")
-    aws_default_region: Optional[str] = Field(None, example="your_region")
-
+    question: str = Field(..., json_schema_extra={"example": "What is the capital of France?"})
+    aws_access_key_id: Optional[str] = Field(None, json_schema_extra={"example": "your_access_key_id"})
+    aws_secret_access_key: Optional[str] = Field(None, json_schema_extra={"example": "your_secret_access_key"})
+    aws_default_region: Optional[str] = Field(None, json_schema_extra={"example": "your_region"})
+    
 # PDF Document Processor
 class PDFDocumentProcessor:
     def __init__(self, data_directory: str):
