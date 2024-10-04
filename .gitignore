@@ -213,5 +213,5 @@ __tests__/
 *.expo/
 
 # Fiases index files
-fiases-index/
+faiss-index/
 *.fiases
