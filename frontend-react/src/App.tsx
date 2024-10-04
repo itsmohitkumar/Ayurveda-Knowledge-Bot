@@ -21,42 +21,55 @@ interface Question {
   answer: string;
 }
 
+// Allow properties to be optional
 interface AWSKeys {
   access_key_id: string;
-  secret_access_key: string;
-  default_region: string;
+  secret_access_key?: string; // Made optional
+  default_region?: string; // Made optional
 }
+
+const ApiKeyConfig = ({ isVisible }: { isVisible: boolean }) => {
+  if (!isVisible) return null; // Do not render if not visible
+
+  return (
+    <div className="bg-gray-700 p-4 rounded shadow-md">
+      <h3 className="text-lg font-bold text-white">API Key Configuration</h3>
+      <p className="text-gray-400 text-sm">Please enter your AWS API keys below:</p>
+      <ul className="text-gray-300 text-sm">
+        <li><strong>AWS Access Key ID:</strong> Your unique identifier for AWS access.</li>
+        <li><strong>AWS Secret Access Key:</strong> Your secret key for AWS services.</li>
+        <li><strong>AWS Default Region:</strong> The AWS region to send requests to (e.g., us-east-1).</li>
+      </ul>
+    </div>
+  );
+};
 
 export default function App() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [awsKeys, setAwsKeys] = useState<AWSKeys | null>(null); // Store AWS keys as an object
+  const [awsKeys, setAwsKeys] = useState<AWSKeys>({ access_key_id: '' }); // Initialized with empty access_key_id
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [awsKeysValid, setAwsKeysValid] = useState<boolean>(false); // New state for AWS keys validation
+  const [isApiKeyConfigVisible, setIsApiKeyConfigVisible] = useState<boolean>(false); // New state for API Key Config visibility
 
   const handleAsk = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Validate AWS keys
-      if (!awsKeys || !awsKeys.access_key_id || !awsKeys.secret_access_key || !awsKeys.default_region) {
-        // Skip error message for missing keys; just continue to try with existing keys
-      }
-
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${awsKeys?.access_key_id}:${awsKeys?.secret_access_key}`
+          'Authorization': `Bearer ${awsKeys.access_key_id}:${awsKeys.secret_access_key}`
         },
         body: JSON.stringify({ 
           question: newQuestion, 
-          aws_access_key_id: awsKeys?.access_key_id, 
-          aws_secret_access_key: awsKeys?.secret_access_key, 
-          aws_default_region: awsKeys?.default_region 
+          aws_access_key_id: awsKeys.access_key_id, 
+          aws_secret_access_key: awsKeys.secret_access_key, 
+          aws_default_region: awsKeys.default_region 
         }),
       });
 
@@ -110,7 +123,19 @@ export default function App() {
       </header>
       <main className="flex-1 p-4 flex justify-center items-center">
         <div className="max-w-2xl w-full bg-gray-800 p-8 rounded-lg shadow-md">
-          <div className="flex flex-col space-y-6">
+          {/* Toggle Button for API Key Configuration */}
+          <button 
+            onClick={() => setIsApiKeyConfigVisible(!isApiKeyConfigVisible)} 
+            className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded text-sm mb-4" // Updated styles
+          >
+            {isApiKeyConfigVisible ? 'Hide API Key Configuration' : 'Show API Key Configuration'}
+          </button>
+
+
+          {/* API Key Configuration Section */}
+          <ApiKeyConfig isVisible={isApiKeyConfigVisible} />
+
+          <div className="flex flex-col space-y-6 mt-6">
             <h2 className="text-3xl font-bold text-purple-500">{ASK_QUESTION_TITLE}</h2>
             <p className="text-gray-400 text-sm">
               You can ask about tax deductions, how to save tax when purchasing a home or car, etc.
@@ -174,42 +199,33 @@ export default function App() {
 
       {/* Settings Modal */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg w-80">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-gray-800 p-6 rounded shadow-lg">
             <h3 className="text-lg font-bold">{SETTINGS_MODAL_TITLE}</h3>
             <div className="flex flex-col space-y-4">
               <input 
                 type="text" 
                 placeholder="AWS Access Key ID" 
-                value={awsKeys?.access_key_id || ''} 
-                onChange={(e) => setAwsKeys({ ...awsKeys, access_key_id: e.target.value } as AWSKeys)} 
-                className="border rounded p-2"
+                className="border p-2 rounded"
+                onChange={(e) => setAwsKeys({ ...awsKeys, access_key_id: e.target.value, secret_access_key: awsKeys.secret_access_key || '', default_region: awsKeys.default_region || '' })}
               />
               <input 
                 type="text" 
                 placeholder="AWS Secret Access Key" 
-                value={awsKeys?.secret_access_key || ''} 
-                onChange={(e) => setAwsKeys({ ...awsKeys, secret_access_key: e.target.value } as AWSKeys)} 
-                className="border rounded p-2"
+                className="border p-2 rounded"
+                onChange={(e) => setAwsKeys({ ...awsKeys, secret_access_key: e.target.value, access_key_id: awsKeys.access_key_id || '', default_region: awsKeys.default_region || '' })}
               />
               <input 
                 type="text" 
                 placeholder="AWS Default Region" 
-                value={awsKeys?.default_region || ''} 
-                onChange={(e) => setAwsKeys({ ...awsKeys, default_region: e.target.value } as AWSKeys)} 
-                className="border rounded p-2"
+                className="border p-2 rounded"
+                onChange={(e) => setAwsKeys({ ...awsKeys, default_region: e.target.value, access_key_id: awsKeys.access_key_id || '', secret_access_key: awsKeys.secret_access_key || '' })}
               />
               <button 
                 onClick={handleSaveSettings} 
                 className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
               >
-                Save Settings
-              </button>
-              <button 
-                onClick={() => setIsSettingsOpen(false)} 
-                className="bg-gray-500 hover:bg-gray-700 text-white p-2 rounded"
-              >
-                Close
+                Save
               </button>
             </div>
           </div>

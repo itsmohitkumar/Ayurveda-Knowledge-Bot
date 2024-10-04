@@ -4,33 +4,43 @@ import time
 import boto3
 import logging
 from typing import List, Optional
+from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from langchain_community.embeddings import BedrockEmbeddings
-from langchain_aws import BedrockLLM 
+from pydantic import BaseModel, Field, ValidationError
+from langchain_aws import BedrockEmbeddings, BedrockLLM
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_community.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
-from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Load configuration from config.json
-with open("src/config.json") as config_file:
-    config = json.load(config_file)
+try:
+    with open("src/config.json") as config_file:
+        config = json.load(config_file)
+except FileNotFoundError:
+    raise RuntimeError("Configuration file 'src/config.json' not found.")
 
 # Configuration variables from config.json
-DATA_DIRECTORY = config["DATA_DIRECTORY"]
-FAISS_INDEX_PATH = config["FAISS_INDEX_PATH"]
-TITAN_MODEL_ID = config["TITAN_MODEL_ID"]
-LLAMA_MODEL_ID = config["LLAMA_MODEL_ID"]
-CHUNK_SIZE = config["CHUNK_SIZE"]
-CHUNK_OVERLAP = config["CHUNK_OVERLAP"]
-MAX_THREADS = config["MAX_THREADS"]
-LOG_LEVEL = config["LOG_LEVEL"]
+DATA_DIRECTORY = config.get("DATA_DIRECTORY")
+FAISS_INDEX_PATH = config.get("FAISS_INDEX_PATH")
+TITAN_MODEL_ID = config.get("TITAN_MODEL_ID")
+LLAMA_MODEL_ID = config.get("LLAMA_MODEL_ID")
+CHUNK_SIZE = config.get("CHUNK_SIZE")
+CHUNK_OVERLAP = config.get("CHUNK_OVERLAP")
+MAX_THREADS = config.get("MAX_THREADS")
+LOG_LEVEL = config.get("LOG_LEVEL", "INFO").upper()
+
+# Validate configuration variables
+required_configs = [DATA_DIRECTORY, FAISS_INDEX_PATH, TITAN_MODEL_ID, LLAMA_MODEL_ID, CHUNK_SIZE, CHUNK_OVERLAP, MAX_THREADS]
+if any(config is None for config in required_configs):
+    raise ValueError("Missing required configuration in config.json")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -46,29 +56,17 @@ app.add_middleware(
 
 # Initialize logging
 logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
+    level=LOG_LEVEL,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 # Prompt template for the LLM responses
 prompt_template = """
-You are a knowledgeable Indian text advisor. Use the following pieces of context to provide a detailed answer to the question at the end. 
-Provide at least 250 words with detailed explanations and include an analysis at the end.
-
-Examples:
-1. 
-Human: What is the significance of Diwali in Indian culture?
-Assistant: Diwali, also known as the Festival of Lights, is one of the most significant festivals in India. It symbolizes the victory of light over darkness and good over evil. Diwali is celebrated by millions across the country and involves lighting oil lamps, bursting fireworks, and sharing sweets. The festival is rooted in various mythological stories, including the return of Lord Rama to Ayodhya after defeating Ravana. 
-
-Analysis: The significance of Diwali goes beyond just celebration; it reflects the deep-seated values of hope, renewal, and the importance of family gatherings in Indian culture.
-
-2.
-Human: Can you explain the role of Ayurveda in Indian health practices?
-Assistant: Ayurveda is a traditional system of medicine that originated in India over 3,000 years ago. It focuses on maintaining health through a balance of mind, body, and spirit. Ayurveda employs various techniques such as herbal medicine, yoga, and dietary adjustments to promote wellness. 
-
-Analysis: The holistic approach of Ayurveda highlights its significance in modern health practices, emphasizing preventive care rather than just treatment.
-
+Human: Use the following pieces of context to provide a 
+concise answer to the question at the end but use at least summarize with 
+250 words with detailed explanations. If you don't know the answer, 
+just say that you don't know, don't try to make up an answer.
 <context>
 {context}
 </context>
@@ -77,25 +75,14 @@ Question: {question}
 
 Assistant:
 """
-
 PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
 # Pydantic model for the question input
 class QuestionRequest(BaseModel):
-    question: str
-    aws_access_key_id: Optional[str] = None
-    aws_secret_access_key: Optional[str] = None
-    aws_default_region: Optional[str] = None
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "question": "What is the capital of France?",
-                "aws_access_key_id": "your_access_key_id",
-                "aws_secret_access_key": "your_secret_access_key",
-                "aws_default_region": "your_region"
-            }
-        }
+    question: str = Field(..., example="What is the capital of France?")
+    aws_access_key_id: Optional[str] = Field(None, example="your_access_key_id")
+    aws_secret_access_key: Optional[str] = Field(None, example="your_secret_access_key")
+    aws_default_region: Optional[str] = Field(None, example="your_region")
 
 # PDF Document Processor
 class PDFDocumentProcessor:
@@ -115,7 +102,7 @@ class PDFDocumentProcessor:
             with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
                 chunked_documents = list(executor.map(text_splitter.split_documents, [documents]))
 
-            logger.info(f"Document loading and chunking completed in {time.time() - start_time} seconds.")
+            logger.info(f"Document loading and chunking completed in {time.time() - start_time:.2f} seconds.")
             return [chunk for sublist in chunked_documents for chunk in sublist]
         except FileNotFoundError:
             logger.error(f"Data directory '{self.data_directory}' not found.")
@@ -176,7 +163,7 @@ class LLMService:
                 chain_type_kwargs={"prompt": PROMPT}
             )
             result = qa.invoke({"query": query})
-            logger.info(f"Response generated in {time.time() - start_time} seconds.")
+            logger.info(f"Response generated in {time.time() - start_time:.2f} seconds.")
             return result['result']
         except Exception as e:
             logger.error(f"Error generating LLM response: {e}", exc_info=True)
@@ -191,8 +178,8 @@ async def log_requests(request: Request, call_next):
     return response
 
 # Custom error handler for validation errors
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
     logger.error(f"Validation error for request: {request.url} - {exc.errors()}")
     return JSONResponse(
         status_code=422,
@@ -201,6 +188,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "body": exc.body
         },
     )
+
+# General exception handler
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logger.error(f"An unexpected error occurred: {exc}", exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred"})
 
 # Endpoint to ask a question
 @app.post("/ask")
@@ -214,7 +207,7 @@ async def ask_question(request: QuestionRequest):
         aws_secret_access_key = request.aws_secret_access_key or os.getenv("AWS_SECRET_ACCESS_KEY")
         aws_default_region = request.aws_default_region or os.getenv("AWS_DEFAULT_REGION")
 
-        if not aws_access_key_id or not aws_secret_access_key or not aws_default_region:
+        if not all([aws_access_key_id, aws_secret_access_key, aws_default_region]):
             raise HTTPException(status_code=400, detail="AWS keys are required.")
 
         bedrock_client = boto3.client(
@@ -235,10 +228,11 @@ async def ask_question(request: QuestionRequest):
         # Generate response
         response = llm_service.generate_response(llm, faiss_index, request.question)
 
-        logger.info(f"Question processed in {time.time() - start_time} seconds.")
+        logger.info(f"Question processed in {time.time() - start_time:.2f} seconds.")
         return {"answer": response}
 
     except HTTPException as e:
+        logger.error(f"HTTP exception: {e.detail}", exc_info=True)
         raise e
     except Exception as e:
         logger.error(f"Error in /ask endpoint: {e}", exc_info=True)
