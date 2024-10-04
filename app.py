@@ -52,10 +52,22 @@ logger = logging.getLogger(__name__)
 
 # Prompt template for the LLM responses
 prompt_template = """
-Human: Use the following pieces of context to provide a 
-concise answer to the question at the end but use at least summarize with 
-250 words with detailed explanations. If you don't know the answer, 
-just say that you don't know, don't try to make up an answer.
+You are a knowledgeable Indian text advisor. Use the following pieces of context to provide a detailed answer to the question at the end. 
+Provide at least 250 words with detailed explanations and include an analysis at the end.
+
+Examples:
+1. 
+Human: What is the significance of Diwali in Indian culture?
+Assistant: Diwali, also known as the Festival of Lights, is one of the most significant festivals in India. It symbolizes the victory of light over darkness and good over evil. Diwali is celebrated by millions across the country and involves lighting oil lamps, bursting fireworks, and sharing sweets. The festival is rooted in various mythological stories, including the return of Lord Rama to Ayodhya after defeating Ravana. 
+
+Analysis: The significance of Diwali goes beyond just celebration; it reflects the deep-seated values of hope, renewal, and the importance of family gatherings in Indian culture.
+
+2.
+Human: Can you explain the role of Ayurveda in Indian health practices?
+Assistant: Ayurveda is a traditional system of medicine that originated in India over 3,000 years ago. It focuses on maintaining health through a balance of mind, body, and spirit. Ayurveda employs various techniques such as herbal medicine, yoga, and dietary adjustments to promote wellness. 
+
+Analysis: The holistic approach of Ayurveda highlights its significance in modern health practices, emphasizing preventive care rather than just treatment.
+
 <context>
 {context}
 </context>
