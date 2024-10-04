@@ -17,7 +17,6 @@ list_of_files = [
     "setup.py",                               # Setup file for packaging the project
     "pyproject.toml",                         # Configuration file for Python project dependencies and settings
     "notebooks/chatbot_interaction.ipynb",    # Jupyter notebook for experimenting with the chatbot
-    "data/.gitkeep",                          # Keeps the data folder in Git (for data files)
     "tests/test_chatbot.py",                  # Test case for chatbot functionality
     "README.md",                              # README file for project documentation
     ".gitignore",                             # File to ignore unnecessary files in Git
