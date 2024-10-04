@@ -1,31 +1,55 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
-from pydantic import BaseModel
+import os
+import json
+import time
 import boto3
+import logging
+from typing import List
+from concurrent.futures import ThreadPoolExecutor
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from langchain_aws import BedrockEmbeddings, BedrockLLM
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_community.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
-import logging
-import os
-from concurrent.futures import ThreadPoolExecutor
-from typing import List
-import time
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
 
-# Configuration variables
-DATA_DIRECTORY = os.getenv("DATA_DIRECTORY", "data")
-FAISS_INDEX_PATH = os.getenv("FAISS_INDEX_PATH", "faiss-index")
-TITAN_MODEL_ID = os.getenv("TITAN_MODEL_ID", "amazon.titan-embed-text-v1")
-LLAMA_MODEL_ID = os.getenv("LLAMA_MODEL_ID", "meta.llama3-70b-instruct-v1:0")
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
-CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 100))
-MAX_THREADS = int(os.getenv("MAX_THREADS", 4))
+# Load environment variables from .env file
+load_dotenv()
+
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION")
+
+# Load configuration from config.json
+with open("src/config.json") as config_file:
+    config = json.load(config_file)
+
+# Configuration variables from config.json
+DATA_DIRECTORY = config["DATA_DIRECTORY"]
+FAISS_INDEX_PATH = config["FAISS_INDEX_PATH"]
+TITAN_MODEL_ID = config["TITAN_MODEL_ID"]
+LLAMA_MODEL_ID = config["LLAMA_MODEL_ID"]
+CHUNK_SIZE = config["CHUNK_SIZE"]
+CHUNK_OVERLAP = config["CHUNK_OVERLAP"]
+MAX_THREADS = config["MAX_THREADS"]
+LOG_LEVEL = config["LOG_LEVEL"]
 
 # Initialize FastAPI app
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this to your specific needs, like ["http://localhost:3000"]
+    allow_credentials=True,
+    allow_methods=["*"],  # This allows all HTTP methods
+    allow_headers=["*"],  # This allows all headers
+)
 
 # Initialize logging
 logging.basicConfig(

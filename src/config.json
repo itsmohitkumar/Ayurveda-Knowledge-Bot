@@ -1,0 +1,11 @@
+{
+    "DATA_DIRECTORY": "data",
+    "FAISS_INDEX_PATH": "faiss-index",
+    "TITAN_MODEL_ID": "amazon.titan-embed-text-v1",
+    "LLAMA_MODEL_ID": "meta.llama3-70b-instruct-v1:0",
+    "CHUNK_SIZE": 1000,
+    "CHUNK_OVERLAP": 100,
+    "MAX_THREADS": 4,
+    "LOG_LEVEL": "INFO"
+  }
+  
