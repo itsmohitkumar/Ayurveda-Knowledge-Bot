@@ -8,7 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from langchain_aws import BedrockEmbeddings, BedrockLLM
+from langchain_community.embeddings import BedrockEmbeddings
+from langchain_aws import BedrockLLM 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_community.vectorstores import FAISS
