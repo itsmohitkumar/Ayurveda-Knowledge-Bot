@@ -139,6 +139,15 @@ class FAISSManager:
     def __init__(self, index_path: str, embeddings):
         self.index_path = index_path
         self.embeddings = embeddings
+        self._ensure_index_directory_exists()
+
+    def _ensure_index_directory_exists(self):
+        """Ensure the directory for the FAISS index exists."""
+        if not os.path.exists(self.index_path):
+            os.makedirs(self.index_path)
+            logger.info(f"Created directory for FAISS index at {self.index_path}.")
+        else:
+            logger.info(f"FAISS index directory already exists at {self.index_path}.")
 
     def create_and_save_vector_store(self, chunked_documents: List[str]):
         try:
@@ -159,7 +168,7 @@ class FAISSManager:
         except Exception as e:
             logger.error(f"Error loading FAISS vector store: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error loading FAISS vector store")
-
+        
 # LLM Service
 class LLMService:
     def __init__(self, model_id: str, client):
@@ -217,6 +226,33 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 async def general_exception_handler(request: Request, exc: Exception):
     logger.error(f"An unexpected error occurred: {exc}", exc_info=True)
     return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred"})
+
+# Endpoint to create FAISS index from PDF documents
+@app.post("/create_index")
+async def create_index():
+    try:
+        logger.info("Creating FAISS index...")
+
+        # Load and chunk PDF documents
+        processor = PDFDocumentProcessor(data_directory=DATA_DIRECTORY)
+        chunked_documents = processor.load_and_chunk_documents()
+
+        # Initialize AWS client
+        bedrock_client = boto3.client(
+            service_name="bedrock-runtime",
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.getenv("AWS_DEFAULT_REGION"),
+        )
+
+        # Create and save FAISS index
+        faiss_manager = FAISSManager(FAISS_INDEX_PATH, BedrockEmbeddings(model_id=TITAN_MODEL_ID, client=bedrock_client))
+        faiss_manager.create_and_save_vector_store(chunked_documents)
+
+        return {"detail": "FAISS index created successfully"}
+    except Exception as e:
+        logger.error(f"Error in /create_index endpoint: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error creating FAISS index")
 
 # Endpoint to ask a question
 @app.post("/ask")
