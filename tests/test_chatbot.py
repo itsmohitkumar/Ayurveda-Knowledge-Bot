@@ -1,10 +1,29 @@
 import pytest
 from fastapi.testclient import TestClient
-from app import app  # Use the absolute import here
+from unittest.mock import patch, MagicMock
+from app import app 
 
-client = TestClient(app)
+# Mocking a document class for the test
+class MockDocument:
+    def __init__(self, page_content, metadata=None):
+        self.page_content = page_content
+        self.metadata = metadata if metadata is not None else {}
 
-def test_ask_question():
-    response = client.post("/ask", json={"question": "What is the new tax laws?"})
-    assert response.status_code == 200
-    assert "answer" in response.json()  # Adjust based on the expected response
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+def test_create_index_success(client):
+    with patch('app.PDFDocumentProcessor') as mock_processor:
+        # Mock the load_and_chunk_documents method to return mock data
+        mock_processor.return_value.load_and_chunk_documents.return_value = [
+            MockDocument("chunk1", metadata={"source": "test.pdf"}),
+            MockDocument("chunk2", metadata={"source": "test.pdf"})
+        ]
+        
+        # Make a request to the /create_index endpoint
+        response = client.post("/create_index")
+        
+        # Assert the response status code and message
+        assert response.status_code == 200
+        assert response.json() == {"message": "FAISS index created successfully."}
