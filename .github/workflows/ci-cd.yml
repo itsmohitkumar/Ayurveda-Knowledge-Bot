@@ -63,6 +63,8 @@ jobs:
 
       # Step 7: Run pytest tests for the FastAPI backend
       - name: Run pytest tests
+        env:
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}  # Use GitHub Secrets for environment variable
         run: |
           pytest --maxfail=1 --disable-warnings  # Run pytest, stop at first failure
 
