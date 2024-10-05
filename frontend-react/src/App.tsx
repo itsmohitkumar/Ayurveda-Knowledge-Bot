@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 // Hardcoded variables
-const API_URL = 'http://localhost:8000/ask'; // FastAPI endpoint
+const API_URL = 'http://localhost:8000/answer'; // FastAPI endpoint
 const HEADER_TITLE = 'Your Personal Indian Tax Advisor'; // Updated header title
 const FOOTER_TEXT = '© 2024 Indian Tax Advisor'; // Updated footer text
 const GITHUB_URL = 'https://github.com/itsmohitkumar/Ayurveda-Knowledge-Bot';
@@ -130,7 +130,6 @@ export default function App() {
           >
             {isApiKeyConfigVisible ? 'Hide API Key Configuration' : 'Show API Key Configuration'}
           </button>
-
 
           {/* API Key Configuration Section */}
           <ApiKeyConfig isVisible={isApiKeyConfigVisible} />

@@ -46,15 +46,18 @@ class FAISSManager:
     def __init__(self, index_path: str, embeddings):
         self.index_path = index_path
         self.embeddings = embeddings
+        self._ensure_index_directory_exists()
+
+    def _ensure_index_directory_exists(self):
+        """Ensure the directory for the FAISS index exists."""
+        if not os.path.exists(self.index_path):
+            os.makedirs(self.index_path)
+            logger.info(f"Created directory for FAISS index at {self.index_path}.")
+        else:
+            logger.info(f"FAISS index directory already exists at {self.index_path}.")
 
     def create_and_save_vector_store(self, chunked_documents: List[str]):
         try:
-            # Ensure the directory for the index exists
-            index_dir = os.path.dirname(self.index_path)
-            if not os.path.exists(index_dir):
-                os.makedirs(index_dir)
-                logger.info(f"Created directory for FAISS index: {index_dir}")
-
             vectorstore_faiss = FAISS.from_documents(chunked_documents, self.embeddings)
             vectorstore_faiss.save_local(self.index_path)
             logger.info(f"FAISS index created and saved to {self.index_path}.")
@@ -64,11 +67,6 @@ class FAISSManager:
 
     def load_vector_store(self):
         try:
-            # Check if the FAISS index file exists before loading
-            if not os.path.exists(self.index_path):
-                logger.error(f"FAISS index file '{self.index_path}' not found. Creating a new index might be required.")
-                raise HTTPException(status_code=404, detail="FAISS index not found")
-
             logger.info(f"Loading FAISS index from {self.index_path}...")
             return FAISS.load_local(self.index_path, self.embeddings, allow_dangerous_deserialization=True)
         except FileNotFoundError:
