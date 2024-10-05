@@ -29,3 +29,15 @@ required_configs = [
 
 if any(config is None for config in required_configs):
     raise ValueError("Missing required configuration in config.json")
+
+# Set LangChain tracing and API key from the config file
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = "Indian-Tax-Advisor"
+
+# Retrieve and validate the API key from the environment variables
+langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
+if langchain_api_key is None:
+    raise ValueError("LANGCHAIN_API_KEY is not set in the environment variables.")
+
+os.environ["LANGCHAIN_API_KEY"] = langchain_api_key
+
