@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 # Pydantic model for the question input
 class QuestionRequest(BaseModel):
-    question: str = Field(..., json_schema_extra={"example": "What is the capital of France?"})
+    question: str = Field(..., json_schema_extra={"example": "What is the new tax laws??"})
     aws_access_key_id: Optional[str] = Field(None, json_schema_extra={"example": "your_access_key_id"})
     aws_secret_access_key: Optional[str] = Field(None, json_schema_extra={"example": "your_secret_access_key"})
     aws_default_region: Optional[str] = Field(None, json_schema_extra={"example": "your_region"})
