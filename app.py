@@ -6,35 +6,41 @@ from threading import Thread
 # Function to run the FastAPI app
 def run_fastapi():
     try:
-        # Assuming the FastAPI app is in app.py
+        # Check if uvicorn is available in the environment
         print("Starting FastAPI server...")
-        subprocess.run(["uvicorn", "src.chatbot.main:app", "--host", "0.0.0.0", "--port", "8000"])
+        process = subprocess.Popen(
+            ["uvicorn", "src.chatbot.main:app", "--host", "0.0.0.0", "--port", "8000"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+
+        # Stream FastAPI output to the terminal
+        for stdout_line in iter(process.stdout.readline, ""):
+            print(stdout_line, end="")
+        
+        # Check if FastAPI process has completed
+        process.stdout.close()
+        process.wait()
+
     except Exception as e:
         print(f"Error running FastAPI: {e}")
 
-# Function to update and run the React app
+# Function to run the React app
 def run_react():
     try:
         # Set working directory to the frontend React folder
+        print("Starting React app...")
         os.chdir('frontend-react')
 
-        # Install dependencies if needed
-        print("Installing npm dependencies...")
+        # Install dependencies if needed (can be skipped if already installed)
         subprocess.run(["npm", "install"])
 
-        # Fix vulnerabilities and update deprecated options
-        print("Fixing vulnerabilities and updating dependencies...")
-        #subprocess.run(["npm", "audit", "fix"])
-        #subprocess.run(["npm", "audit", "fix", "--force"])
-
-        # Start the React app using npm start
-        print("Starting React app...")
+        # Run the React app using npm start
         subprocess.run(["npm", "start"])
+
     except Exception as e:
         print(f"Error running React app: {e}")
-    finally:
-        # Return to the original directory
-        os.chdir('..')
 
 # Main function to run both FastAPI and React concurrently
 def main():
