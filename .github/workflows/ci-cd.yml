@@ -1,6 +1,6 @@
 name: CI/CD Pipeline
 
-# Trigger the workflow on push or pull request to the main branch
+# Trigger the workflow on a push or pull request to the main branch
 on:
   push:
     branches:
@@ -11,95 +11,105 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # The OS environment the workflow will run on
+    runs-on: ubuntu-latest  # The OS environment for running this workflow
 
     services:
       docker:
-        image: docker:19.03.12  # Docker image to use for running Docker commands
-        options: --privileged    # Run in privileged mode to allow Docker-in-Docker
+        image: docker:19.03.12  # Docker version
+        options: --privileged    # Enable Docker-in-Docker to build Docker images inside the workflow
         ports:
-          - 2375:2375            # Expose Docker port
+          - 2375:2375            # Expose Docker port for Docker commands
         env:
-          DOCKER_TLS_CERTDIR: ""  # Disable Docker's TLS
+          DOCKER_TLS_CERTDIR: ""  # Disable Docker TLS for ease of local communication
 
     steps:
-      # Step 1: Checkout code from the repository
-      - name: Checkout code
+      # Step 1: Checkout the code from the repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js for building the React app
+      # Step 2: Set up Node.js for the React frontend
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'     # Use Node.js version 18
+          node-version: '18'  # Use Node.js version 18 for compatibility with most modern libraries
 
-      # Step 3: Cache Node.js modules to speed up subsequent runs
+      # Step 3: Cache Node.js modules to speed up subsequent builds
       - name: Cache Node.js modules
         uses: actions/cache@v3
         with:
-          path: frontend-react/node_modules  # Path to cache
-          key: ${{ runner.os }}-node-${{ hashFiles('**/frontend-react/package-lock.json') }}
+          path: frontend/node_modules  # Cache directory for node_modules in the frontend folder
+          key: ${{ runner.os }}-node-${{ hashFiles('**/frontend/package-lock.json') }}  # Create cache key based on OS and package-lock file
           restore-keys: |
-            ${{ runner.os }}-node/  # Restore cache if available
+            ${{ runner.os }}-node/
 
-      # Step 4: Install Node.js dependencies and build the React app
+      # Step 4: Install Node.js dependencies and build the frontend React app
       - name: Install dependencies and build React app
-        working-directory: ./frontend-react
+        working-directory: ./frontend  # Navigate to the frontend directory
         run: |
-          npm ci               # Install dependencies using package-lock.json
-          npm run build         # Build the React app
+          npm ci               # Install all dependencies using clean install
+          npm run build         # Build the app for production
 
       # Step 5: Set up Python for the FastAPI backend
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.11'  # Use Python version 3.11
+          python-version: '3.11'  # Use Python version 3.11 for FastAPI
 
-      # Step 6: Install Python dependencies for the FastAPI backend
-      - name: Install dependencies for FastAPI
+      # Step 6: Cache Python dependencies
+      - name: Cache Python packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip  # Cache pip packages to improve build performance
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip/
+
+      # Step 7: Install Python dependencies for the FastAPI backend
+      - name: Install Python dependencies for FastAPI
+        working-directory: ./backend  # Navigate to the backend directory
         run: |
-          python -m pip install --upgrade pip  # Upgrade pip
-          pip install -r requirements.txt      # Install dependencies from requirements.txt
+          python -m pip install --upgrade pip  # Upgrade pip to the latest version
+          pip install -r requirements.txt      # Install all required Python packages
 
-      # Step 7: Run pytest tests for the FastAPI backend
-      - name: Run pytest tests
+      # Step 8: Run unit tests for FastAPI using pytest
+      - name: Run backend tests
+        working-directory: ./backend  # Ensure you're in the backend folder
         env:
-          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}  # Use GitHub Secrets for environment variable
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}  # Example of an API key from GitHub secrets
         run: |
-          pytest --maxfail=1 --disable-warnings  # Run pytest, stop at first failure
+          pytest --maxfail=1 --disable-warnings  # Run tests, stop after the first failure
 
-      # Step 8: Log in to Docker Hub
-      # Use Docker credentials stored in GitHub Secrets to log in
+      # Step 9: Log in to Docker Hub using stored secrets for username and password
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub username stored in secrets
-          password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub password stored in secrets
+          username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub username stored in GitHub Secrets
+          password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub password stored in GitHub Secrets
 
-      # Step 9: Build and push Docker image
-      # This step builds the Docker image from the Dockerfile and pushes it to Docker Hub
+      # Step 10: Build Docker image and push it to Docker Hub
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/fullstack-app:latest .  # Build the Docker image
-          docker push ${{ secrets.DOCKER_USERNAME }}/fullstack-app:latest         # Push the image to Docker Hub
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/tax-app:latest .  # Build the Docker image with the latest tag
+          docker push ${{ secrets.DOCKER_USERNAME }}/tax-app:latest         # Push the image to Docker Hub
 
-      # Step 10: Notify of a successful build
-      # This step outputs a success message if the Docker build and push steps succeed
-      - name: Build Success Notification
+      # Step 11: Notify of successful build and push
+      - name: Notify successful build
         run: echo "Docker image has been built and pushed successfully."
 
   deploy:
-    runs-on: ubuntu-latest  # The OS environment for deployment
-    needs: build            # Ensure the deployment job runs only after the build job
+    runs-on: ubuntu-latest  # OS environment for the deployment job
+    needs: build  # Run deploy only after the build job is successful
 
     steps:
-      # Step 11: Checkout code from the repository
-      - name: Checkout code
+      # Step 12: Checkout the repository code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 12: Pull and run the Docker container for the application
-      # This step pulls the built Docker image and runs it on the server
+      # Step 13: Pull and run the Docker container for the application
       - name: Deploy Application
         run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/fullstack-app:latest  # Pull the latest image from Docker Hub
-          docker run -d -p 8000:8000 --name fullstack-app ${{ secrets.DOCKER_USERNAME }}/fullstack-app:latest  # Run the app in a container
+          docker pull ${{ secrets.DOCKER_USERNAME }}/tax-app:latest  # Pull the latest image from Docker Hub
+          docker stop tax-app || true  # Stop any running container (ignore errors if none exists)
+          docker rm tax-app || true  # Remove the stopped container (ignore errors if none exists)
+          docker run -d -p 8000:8000 --name tax-app ${{ secrets.DOCKER_USERNAME }}/tax-app:latest  # Run the Docker container in detached mode
+
