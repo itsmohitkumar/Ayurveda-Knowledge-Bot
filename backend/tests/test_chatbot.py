@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
-from src.chatbot.main import app 
+from app import app 
 
 # Mocking a document class for the test
 class MockDocument:
