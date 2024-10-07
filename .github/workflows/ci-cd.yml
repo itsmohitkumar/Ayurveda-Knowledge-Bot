@@ -50,7 +50,7 @@ jobs:
       - name: Install and test React app
         working-directory: ./frontend  # Navigate to the frontend folder
         run: |
-          npm install                # Install dependencies
+          npm ci                # Install dependencies
           npm test              # Run tests for React frontend
 
       # Step 5: Set up Python for FastAPI backend
@@ -105,8 +105,9 @@ jobs:
       # Step 3: Build and push the Docker image to Docker Hub
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:latest .  # Build the Docker image
-          docker push ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:latest         # Push the Docker image to Docker Hub
+          IMAGE_TAG=${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:${{ github.sha }}  # Use commit SHA for versioning
+          docker build -t $IMAGE_TAG .  # Build the Docker image
+          docker push $IMAGE_TAG         # Push the Docker image to Docker Hub
 
   # Job 3: Deploy Job
   deploy:
@@ -121,7 +122,14 @@ jobs:
       # Step 2: Pull and run the Docker container on the server
       - name: Deploy Application
         run: |
-          docker pull ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:latest  # Pull the latest image from Docker Hub
+          IMAGE_TAG=${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:${{ github.sha }}  # Use the same tag as built
+          docker pull $IMAGE_TAG  # Pull the latest image from Docker Hub
           docker stop tax-app || true  # Stop any running container (ignore if none exists)
           docker rm tax-app || true    # Remove the stopped container (ignore if none exists)
-          docker run -d -p 8000:8000 --name tax-app ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:latest  # Run the app in a container
+          docker run -d -p 8000:8000 --name tax-app $IMAGE_TAG  # Run the app in a container
+
+      # Step 3: Notify on failure (optional)
+      - name: Notify on Failure
+        if: failure()  # Trigger this step if the previous steps failed
+        run: |
+          echo "Deployment failed! Please check the logs."  # Replace with notification command as needed
