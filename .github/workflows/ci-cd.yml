@@ -50,7 +50,7 @@ jobs:
       - name: Install and test React app
         working-directory: ./frontend  # Navigate to the frontend folder
         run: |
-          npm ci                # Install dependencies
+          npm install                # Install dependencies
           npm test              # Run tests for React frontend
 
       # Step 5: Set up Python for FastAPI backend
