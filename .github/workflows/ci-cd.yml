@@ -1,6 +1,6 @@
 name: CI/CD Pipeline
 
-# Trigger the workflow on a push or pull request to the main branch
+# Trigger the workflow on push or pull request to the main branch
 on:
   push:
     branches:
@@ -9,21 +9,25 @@ on:
     branches:
       - main
 
-jobs:
-  build:
-    runs-on: ubuntu-latest  # The OS environment for running this workflow
+env:
+  ENVIRONMENT_NAME: Indian-Tax-Advisor  # Use the environment name for the secrets
 
+jobs:
+  # Job 1: Test Job
+  test:
+    runs-on: ubuntu-latest  # OS environment for the test job
+    
     services:
       docker:
-        image: docker:19.03.12  # Docker version
-        options: --privileged    # Enable Docker-in-Docker to build Docker images inside the workflow
+        image: docker:19.03.12  # Use Docker-in-Docker for testing container-based apps
+        options: --privileged    # Allow privileged Docker commands
         ports:
-          - 2375:2375            # Expose Docker port for Docker commands
+          - 2375:2375            # Expose Docker port
         env:
-          DOCKER_TLS_CERTDIR: ""  # Disable Docker TLS for ease of local communication
+          DOCKER_TLS_CERTDIR: ""  # Disable Docker's TLS
 
     steps:
-      # Step 1: Checkout the code from the repository
+      # Step 1: Checkout code from the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -31,85 +35,93 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # Use Node.js version 18 for compatibility with most modern libraries
+          node-version: '18'  # Set the Node.js version
 
-      # Step 3: Cache Node.js modules to speed up subsequent builds
+      # Step 3: Cache Node.js modules
       - name: Cache Node.js modules
         uses: actions/cache@v3
         with:
-          path: frontend/node_modules  # Cache directory for node_modules in the frontend folder
-          key: ${{ runner.os }}-node-${{ hashFiles('**/frontend/package-lock.json') }}  # Create cache key based on OS and package-lock file
+          path: frontend/node_modules  # Cache directory for the frontend node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/frontend/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node/
 
-      # Step 4: Install Node.js dependencies and build the frontend React app
-      - name: Install dependencies and build React app
-        working-directory: ./frontend  # Navigate to the frontend directory
+      # Step 4: Install Node.js dependencies and run tests for React app
+      - name: Install and test React app
+        working-directory: ./frontend  # Navigate to the frontend folder
         run: |
-          npm ci               # Install all dependencies using clean install
-          npm run build         # Build the app for production
+          npm ci                # Install dependencies
+          npm test              # Run tests for React frontend
 
-      # Step 5: Set up Python for the FastAPI backend
+      # Step 5: Set up Python for FastAPI backend
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.11'  # Use Python version 3.11 for FastAPI
+          python-version: '3.11'  # Python version 3.11 for FastAPI
 
       # Step 6: Cache Python dependencies
       - name: Cache Python packages
         uses: actions/cache@v3
         with:
-          path: ~/.cache/pip  # Cache pip packages to improve build performance
+          path: ~/.cache/pip  # Cache pip packages
           key: ${{ runner.os }}-pip-${{ hashFiles('**/backend/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip/
 
-      # Step 7: Install Python dependencies for the FastAPI backend
-      - name: Install Python dependencies for FastAPI
-        working-directory: ./backend  # Navigate to the backend directory
+      # Step 7: Install Python dependencies and run tests for FastAPI
+      - name: Install and test FastAPI backend
+        working-directory: ./backend  # Navigate to the backend folder
         run: |
-          python -m pip install --upgrade pip  # Upgrade pip to the latest version
-          pip install -r requirements.txt      # Install all required Python packages
+          python -m pip install --upgrade pip  # Upgrade pip
+          pip install -r requirements.txt      # Install dependencies
+          pytest --maxfail=1 --disable-warnings  # Run backend tests with pytest
 
-      # Step 8: Run unit tests for FastAPI using pytest
-      - name: Run backend tests
-        working-directory: ./backend  # Ensure you're in the backend folder
+  # Job 2: Build Job
+  build:
+    runs-on: ubuntu-latest
+    needs: test  # Build only if tests pass
+
+    services:
+      docker:
+        image: docker:19.03.12  # Docker-in-Docker for building images
+        options: --privileged
+        ports:
+          - 2375:2375
         env:
-          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}  # Example of an API key from GitHub secrets
-        run: |
-          pytest --maxfail=1 --disable-warnings  # Run tests, stop after the first failure
-
-      # Step 9: Log in to Docker Hub using stored secrets for username and password
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub username stored in GitHub Secrets
-          password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub password stored in GitHub Secrets
-
-      # Step 10: Build Docker image and push it to Docker Hub
-      - name: Build and push Docker image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/tax-app:latest .  # Build the Docker image with the latest tag
-          docker push ${{ secrets.DOCKER_USERNAME }}/tax-app:latest         # Push the image to Docker Hub
-
-      # Step 11: Notify of successful build and push
-      - name: Notify successful build
-        run: echo "Docker image has been built and pushed successfully."
-
-  deploy:
-    runs-on: ubuntu-latest  # OS environment for the deployment job
-    needs: build  # Run deploy only after the build job is successful
+          DOCKER_TLS_CERTDIR: ""
 
     steps:
-      # Step 12: Checkout the repository code
+      # Step 1: Checkout code from the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 13: Pull and run the Docker container for the application
+      # Step 2: Log in to Docker Hub using stored secrets from the environment
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}  # Docker Hub username from environment secrets
+          password: ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_PASSWORD }}  # Docker Hub password from environment secrets
+
+      # Step 3: Build and push the Docker image to Docker Hub
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:latest .  # Build the Docker image
+          docker push ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:latest         # Push the Docker image to Docker Hub
+
+  # Job 3: Deploy Job
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build  # Deploy only if the build is successful
+
+    steps:
+      # Step 1: Checkout code from the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Pull and run the Docker container on the server
       - name: Deploy Application
         run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/tax-app:latest  # Pull the latest image from Docker Hub
-          docker stop tax-app || true  # Stop any running container (ignore errors if none exists)
-          docker rm tax-app || true  # Remove the stopped container (ignore errors if none exists)
-          docker run -d -p 8000:8000 --name tax-app ${{ secrets.DOCKER_USERNAME }}/tax-app:latest  # Run the Docker container in detached mode
-
+          docker pull ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:latest  # Pull the latest image from Docker Hub
+          docker stop tax-app || true  # Stop any running container (ignore if none exists)
+          docker rm tax-app || true    # Remove the stopped container (ignore if none exists)
+          docker run -d -p 8000:8000 --name tax-app ${{ secrets.INDIAN_TAX_ADVISOR.DOCKER_USERNAME }}/tax-app:latest  # Run the app in a container
