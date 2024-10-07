@@ -1,35 +1,32 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
-// Hardcoded variables
-const API_URL = 'http://localhost:8000/answer'; // FastAPI endpoint
-const HEADER_TITLE = 'Your Personal Indian Tax Advisor'; // Updated header title
-const FOOTER_TEXT = '© 2024 Indian Tax Advisor'; // Updated footer text
+const API_URL = 'http://localhost:8000/answer';
+const HEADER_TITLE = 'Your Personal Indian Tax Advisor';
+const FOOTER_TEXT = ' 2024 Indian Tax Advisor';
 const GITHUB_URL = 'https://github.com/itsmohitkumar/Ayurveda-Knowledge-Bot';
 const INPUT_PLACEHOLDER = 'Type your question here';
 const ASK_BUTTON_TEXT = 'Ask';
 const CLEAR_BUTTON_TEXT = 'Clear';
 const LOADING_TEXT = 'Loading...';
 const ERROR_TEXT = 'An error occurred';
-const ASK_QUESTION_TITLE = 'Ask a question about Taxes'; // Updated question title
+const ASK_QUESTION_TITLE = 'Ask a question about Taxes';
 const SETTINGS_BUTTON_TEXT = 'Settings';
 const SETTINGS_MODAL_TITLE = 'AWS Configuration';
 const SUCCESS_MESSAGE = 'AWS keys are valid!';
 
-// Interfaces
 interface Question {
   question: string;
   answer: string;
 }
 
-// Allow properties to be optional
 interface AWSKeys {
   access_key_id: string;
-  secret_access_key?: string; // Made optional
-  default_region?: string; // Made optional
+  secret_access_key?: string;
+  default_region?: string;
 }
 
 const ApiKeyConfig = ({ isVisible }: { isVisible: boolean }) => {
-  if (!isVisible) return null; // Do not render if not visible
+  if (!isVisible) return null;
 
   return (
     <div className="bg-gray-700 p-4 rounded shadow-md">
@@ -49,10 +46,10 @@ export default function App() {
   const [newQuestion, setNewQuestion] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [awsKeys, setAwsKeys] = useState<AWSKeys>({ access_key_id: '' }); // Initialized with empty access_key_id
+  const [awsKeys, setAwsKeys] = useState<AWSKeys>({ access_key_id: '' });
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [awsKeysValid, setAwsKeysValid] = useState<boolean>(false); // New state for AWS keys validation
-  const [isApiKeyConfigVisible, setIsApiKeyConfigVisible] = useState<boolean>(false); // New state for API Key Config visibility
+  const [awsKeysValid, setAwsKeysValid] = useState<boolean>(false);
+  const [isApiKeyConfigVisible, setIsApiKeyConfigVisible] = useState<boolean>(false);
 
   const handleAsk = async () => {
     setLoading(true);
@@ -65,11 +62,11 @@ export default function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${awsKeys.access_key_id}:${awsKeys.secret_access_key}`
         },
-        body: JSON.stringify({ 
-          question: newQuestion, 
-          aws_access_key_id: awsKeys.access_key_id, 
-          aws_secret_access_key: awsKeys.secret_access_key, 
-          aws_default_region: awsKeys.default_region 
+        body: JSON.stringify({
+          question: newQuestion,
+          aws_access_key_id: awsKeys.access_key_id,
+          aws_secret_access_key: awsKeys.secret_access_key,
+          aws_default_region: awsKeys.default_region
         }),
       });
 
@@ -80,10 +77,10 @@ export default function App() {
       const data = await response.json();
       setQuestions([...questions, { question: newQuestion, answer: data.answer }]);
       setNewQuestion('');
-      setAwsKeysValid(true); // Set AWS keys as valid if the request is successful
+      setAwsKeysValid(true);
     } catch (error) {
       setError(error instanceof Error ? error.message : ERROR_TEXT);
-      setAwsKeysValid(false); // Reset valid status on error
+      setAwsKeysValid(false);
     } finally {
       setLoading(false);
     }
@@ -102,9 +99,8 @@ export default function App() {
   };
 
   const handleSaveSettings = () => {
-    // Logic to save AWS keys (could also save in localStorage or state)
     setIsSettingsOpen(false);
-    setAwsKeysValid(true); // Assume keys are valid after saving
+    setAwsKeysValid(true);
   };
 
   return (
@@ -113,44 +109,40 @@ export default function App() {
         <img src="https://aws.amazon.com/favicon.ico" alt="AWS Logo" className="w-10 h-10" />
         <h1 className="text-4xl font-bold text-center">{HEADER_TITLE}</h1>
         <img src="https://pdfjs.express/static/favicon.ico" alt="PDF.js Express Logo" className="w-10 h-10" />
-        <button 
-          onClick={() => setIsSettingsOpen(true)} 
+        <button
+          onClick={() => setIsSettingsOpen(true)}
           className="bg-blue-500 hover:bg-blue-700 text-white p-3 rounded"
           title={SETTINGS_BUTTON_TEXT}
         >
-          ⚙️ {/* Settings Icon */}
+          <span role="img" aria-label="Settings icon">⚙️</span>
         </button>
       </header>
       <main className="flex-1 p-4 flex justify-center items-center">
         <div className="max-w-2xl w-full bg-gray-800 p-8 rounded-lg shadow-md">
-          {/* Toggle Button for API Key Configuration */}
-          <button 
-            onClick={() => setIsApiKeyConfigVisible(!isApiKeyConfigVisible)} 
-            className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded text-sm mb-4" // Updated styles
+          <button
+            onClick={() => setIsApiKeyConfigVisible(!isApiKeyConfigVisible)}
+            className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded text-sm mb-4"
           >
             {isApiKeyConfigVisible ? 'Hide API Key Configuration' : 'Show API Key Configuration'}
           </button>
-
-          {/* API Key Configuration Section */}
           <ApiKeyConfig isVisible={isApiKeyConfigVisible} />
-
           <div className="flex flex-col space-y-6 mt-6">
             <h2 className="text-3xl font-bold text-purple-500">{ASK_QUESTION_TITLE}</h2>
             <p className="text-gray-400 text-sm">
               You can ask about tax deductions, how to save tax when purchasing a home or car, etc.
             </p>
             <div className="flex space-x-2">
-              <input 
-                type="text" 
-                value={newQuestion} 
-                onChange={(e) => setNewQuestion(e.target.value)} 
-                onKeyPress={handleKeyPress} 
+              <input
+                type="text"
+                value={newQuestion}
+                onChange={(e) => setNewQuestion(e.target.value)}
+                onKeyPress={handleKeyPress}
                 placeholder={INPUT_PLACEHOLDER}
-                className="w-full bg-gray-700 text-white p-3 rounded text-lg" 
-                aria-label="Question input" 
+                className="w-full bg-gray-700 text-white p-3 rounded text-lg"
+                aria-label="Question input"
               />
-              <button 
-                onClick={handleAsk} 
+              <button
+                onClick={handleAsk}
                 className="bg-purple-500 hover:bg-purple-700 text-white p-3 rounded text-lg"
               >
                 {ASK_BUTTON_TEXT}
@@ -171,10 +163,10 @@ export default function App() {
               </div>
             )}
             {awsKeysValid && (
-              <p className="text-green-500 text-lg">{SUCCESS_MESSAGE}</p> // Show success message if keys are valid
+              <p className="text-green-500 text-lg">{SUCCESS_MESSAGE}</p>
             )}
-            <button 
-              onClick={handleClear} 
+            <button
+              onClick={handleClear}
               className="bg-gray-600 hover:bg-gray-500 text-white p-3 rounded text-lg"
             >
               {CLEAR_BUTTON_TEXT}
@@ -185,43 +177,41 @@ export default function App() {
       <footer className="bg-purple-500 p-4 text-white shadow-md text-center">
         <p className="text-lg">{FOOTER_TEXT}</p>
         <p>
-          <a 
-            href={GITHUB_URL} 
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-yellow-300 hover:text-yellow-400 text-xl font-semibold transition duration-300"
           >
             View on GitHub
           </a>
         </p>
       </footer>
-
-      {/* Settings Modal */}
       {isSettingsOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-gray-800 p-6 rounded shadow-lg">
             <h3 className="text-lg font-bold">{SETTINGS_MODAL_TITLE}</h3>
             <div className="flex flex-col space-y-4">
-              <input 
-                type="text" 
-                placeholder="AWS Access Key ID" 
+              <input
+                type="text"
+                placeholder="AWS Access Key ID"
                 className="border p-2 rounded"
                 onChange={(e) => setAwsKeys({ ...awsKeys, access_key_id: e.target.value, secret_access_key: awsKeys.secret_access_key || '', default_region: awsKeys.default_region || '' })}
               />
-              <input 
-                type="text" 
-                placeholder="AWS Secret Access Key" 
+              <input
+                type="text"
+                placeholder="AWS Secret Access Key"
                 className="border p-2 rounded"
                 onChange={(e) => setAwsKeys({ ...awsKeys, secret_access_key: e.target.value, access_key_id: awsKeys.access_key_id || '', default_region: awsKeys.default_region || '' })}
               />
-              <input 
-                type="text" 
-                placeholder="AWS Default Region" 
+              <input
+                type="text"
+                placeholder="AWS Default Region"
                 className="border p-2 rounded"
                 onChange={(e) => setAwsKeys({ ...awsKeys, default_region: e.target.value, access_key_id: awsKeys.access_key_id || '', secret_access_key: awsKeys.secret_access_key || '' })}
               />
-              <button 
-                onClick={handleSaveSettings} 
+              <button
+                onClick={handleSaveSettings}
                 className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
               >
                 Save
